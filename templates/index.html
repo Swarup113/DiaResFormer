@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DiaResFormer | Explainable Diabetes Detection</title>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+    
+    <style>
+        /* ── Variables (DiaResFormer Theme) ── */
+        :root {
+            --green:        #10b981;
+            --green-dark:   #059669;
+            --green-deeper: #064e3b;
+            --green-faint:  #ecfdf5;
+            --green-mid:    #d1fae5;
+            --red:          #ef4444;
+            --red-faint:    #fef2f2;
+
+            --bg:           #f8fafc;
+            --white:        #ffffff;
+            --text:         #0f172a;
+            --text-mid:     #334155;
+            --text-muted:   #64748b;
+            --border:       #e2e8f0;
+            --border-focus: #10b981;
+            --shadow-sm:    0 1px 3px rgba(0,0,0,.07), 0 1px 2px rgba(0,0,0,.05);
+            --shadow-md:    0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.05);
+            --shadow-lg:    0 12px 32px rgba(0,0,0,.1);
+            --radius:       10px;
+            --radius-lg:    16px;
+
+            --font-body:    'DM Sans', system-ui, sans-serif;
+            --font-display: 'DM Serif Display', Georgia, serif;
+        }
+
+        /* ── Reset ── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: var(--font-body);
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.65;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            -webkit-font-smoothing: antialiased;
+        }
+        img { max-width: 100%; display: block; }
+        button { font-family: var(--font-body); }
+
+        /* ── Animated background dots ── */
+        .bg-dots {
+            position: fixed; inset: 0; z-index: 0; pointer-events: none;
+            background-image: radial-gradient(circle, rgba(16,185,129,.12) 1px, transparent 1px);
+            background-size: 32px 32px;
+            mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%);
+            -webkit-mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%);
+            animation: dotsShift 20s ease-in-out infinite alternate;
+        }
+        @keyframes dotsShift {
+            from { background-position: 0 0; }
+            to   { background-position: 32px 32px; }
+        }
+
+        /* ── Header ── */
+        header {
+            position: sticky; top: 0; z-index: 100;
+            background: rgba(255,255,255,.88);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border-bottom: 1px solid var(--border);
+            padding: 0 2rem;
+            height: 70px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .logo {
+            display: flex; align-items: center; gap: .45rem;
+            text-decoration: none;
+            font-weight: 700; font-size: 1.25rem;
+            letter-spacing: -.01em;
+            color: var(--text);
+            cursor: pointer;
+        }
+        .logo svg { stroke: var(--green); width: 24px; height: 24px; }
+        .logo-dia { color: var(--green); }
+        .logo-rest { color: var(--green-deeper); }
+        
+        nav { display: flex; gap: .25rem; }
+        .nav-btn {
+            background: transparent; border: none; cursor: pointer;
+            padding: .4rem .85rem; border-radius: 8px;
+            font-size: .88rem; font-weight: 500; color: var(--text-muted);
+            transition: background .15s, color .15s;
+        }
+        .nav-btn:hover { background: var(--green-faint); color: var(--green-dark); }
+        .nav-btn.active { background: var(--green-faint); color: var(--green); font-weight: 600; }
+
+        /* Mobile Menu Button */
+        .mobile-menu-btn {
+            display: none; flex-direction: column; justify-content: center;
+            gap: 4px; background: none; border: none; cursor: pointer;
+            padding: .4rem;
+        }
+        .mobile-menu-btn span {
+            display: block; width: 20px; height: 2px;
+            background: var(--text-mid); border-radius: 2px;
+            transition: all .2s;
+        }
+
+        /* ── Main Layout ── */
+        main {
+            flex: 1; position: relative; z-index: 1;
+            max-width: 1200px; margin: 0 auto; width: 100%;
+            padding: 0 1.5rem;
+            display: flex; flex-direction: column; justify-content: center;
+        }
+        .view-section { display: none; }
+        .view-section.active { display: block; animation: slideUp .55s cubic-bezier(.22,.61,.36,1) both; }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(22px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ── Landing Page ── */
+        .hero {
+            text-align: center;
+            padding: 5rem 1rem 3.5rem;
+            max-width: 820px; margin: 0 auto;
+        }
+        .hero h1 {
+            font-family: var(--font-display);
+            font-size: clamp(2.2rem, 5vw, 3.4rem);
+            line-height: 1.15;
+            color: var(--text);
+            margin-bottom: 1.2rem;
+        }
+        .hero h1 em {
+            font-style: italic;
+            color: var(--green);
+        }
+        .hero-sub {
+            font-size: 1.05rem; color: var(--text-mid);
+            max-width: 640px; margin: 0 auto 1.5rem;
+        }
+        .btn-primary {
+            display: inline-flex; align-items: center; gap: .5rem;
+            background: var(--green); color: white;
+            border: none; border-radius: var(--radius);
+            padding: .8rem 1.8rem; font-size: 1rem; font-weight: 600;
+            cursor: pointer; transition: background .18s, transform .12s;
+            box-shadow: 0 4px 14px rgba(16,185,129,.38);
+        }
+        .btn-primary:hover {
+            background: var(--green-dark); transform: translateY(-2px);
+        }
+
+        /* Section Label */
+        .section-label {
+            text-align: center;
+            font-size: .9rem; font-weight: 600; letter-spacing: .1em;
+            text-transform: uppercase; color: var(--green);
+            margin: 3rem 0 2rem;
+            position: relative;
+        }
+        .section-label::after {
+            content: ''; display: block; width: 40px; height: 2px;
+            background: var(--green); margin: .5rem auto 0;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem; margin-bottom: 3rem;
+        }
+        .feature-card {
+            background: var(--white); border: 1px solid var(--border);
+            border-radius: var(--radius-lg); padding: 1.75rem;
+            box-shadow: var(--shadow-sm);
+            transition: transform .2s, box-shadow .2s;
+        }
+        .feature-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-lg); }
+        
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+        /* Make sure icons are green */
+        .card-header svg {
+            width: 28px; height: 28px;
+            flex-shrink: 0;
+            stroke: var(--green); /* Ensures stroke is green */
+            fill: var(--green); /* Ensures fills are green */
+        }
+        .feature-card h3 { 
+            font-size: 1.05rem; 
+            font-weight: 600; 
+            color: var(--green-deeper); 
+            margin: 0; 
+            line-height: 1.2;
+        }
+        .feature-card p { font-size: .9rem; color: var(--text-muted); margin-bottom: .75rem; }
+        .card-list {
+            list-style: none; padding: 0; margin-top: .5rem;
+        }
+        .card-list li {
+            position: relative; padding-left: 1.1rem;
+            font-size: .88rem; color: var(--text-mid);
+            margin-bottom: .4rem;
+        }
+        .card-list li::before {
+            content: ''; position: absolute; left: 0; top: .55em;
+            width: 5px; height: 5px;
+            background: var(--green); border-radius: 50%;
+        }
+
+        /* ── App / Prediction Page ── */
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center; 
+            margin: 2rem auto;
+            width: 100%;
+        }
+        
+        /* Page Header */
+        .page-header {
+            width: 100%;
+            max-width: 900px; /* Wider to match form */
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        .page-header h2 {
+            font-family: var(--font-display);
+            font-size: 1.75rem;
+            color: var(--text);
+            margin: 0;
+        }
+        .back-btn {
+            display: flex; align-items: center; gap: .5rem;
+            background: transparent; border: 1px solid var(--border);
+            color: var(--text-muted); padding: .5rem 1rem;
+            border-radius: var(--radius); cursor: pointer;
+            font-size: .9rem; font-weight: 500; transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .back-btn:hover {
+            border-color: var(--green);
+            color: var(--green);
+            background: var(--green-faint);
+        }
+
+        /* Light Horizontal Line */
+        .section-divider {
+            width: 100%; max-width: 900px; height: 1px;
+            background: var(--border); border: none;
+            margin-bottom: 2rem;
+        }
+
+        /* Instruction & Disclaimer Box */
+        .instruction-box {
+            background: var(--green-faint); border: 1px solid var(--green-mid);
+            border-radius: var(--radius); padding: .85rem 1rem;
+            margin-bottom: 1.5rem; font-size: .83rem; color: var(--green-deeper);
+            line-height: 1.55;
+            width: 100%;
+            max-width: 900px;
+        }
+        .instr-disclaimer {
+            margin-top: .45rem; padding-top: .45rem;
+            border-top: 1px solid var(--green-mid);
+            color: #78350f;
+        }
+
+        /* Form */
+        .form-card {
+            background: var(--white); border: 1px solid var(--border);
+            border-radius: var(--radius-lg); 
+            padding: 3rem 2.5rem; 
+            box-shadow: var(--shadow-md);
+            width: 100%;
+            max-width: 900px; /* Made wider */
+        }
+        .form-grid {
+            display: grid;
+            gap: 1.5rem 1.5rem;
+            grid-template-columns: 1fr 1fr; 
+        }
+
+        .field { display: flex; flex-direction: column; }
+        label {
+            display: block; 
+            margin-bottom: .4rem;
+            font-size: .82rem; font-weight: 600; color: var(--text-mid);
+        }
+        .input-field {
+            width: 100%; padding: .6rem .9rem;
+            border: 1px solid var(--border); border-radius: var(--radius);
+            font-size: .92rem; font-family: var(--font-body);
+            color: var(--text); background: var(--white);
+            transition: border-color .15s, box-shadow .15s;
+            -moz-appearance: textfield;
+        }
+        .input-field:focus {
+            outline: none;
+            border-color: var(--green);
+            box-shadow: 0 0 0 3px rgba(16,185,129,.12);
+        }
+        .helper-text { 
+            font-size: .72rem; color: var(--text-muted); 
+            margin-top: .4rem; 
+            display: block; 
+        }
+
+        /* BMI Toggle */
+        .bmi-toggle {
+            display: flex; align-items: center; gap: .5rem; 
+            font-size: .8rem; color: var(--text-muted);
+            margin-top: .5rem; margin-bottom: 1rem; cursor: pointer; user-select: none;
+            width: fit-content;
+        }
+        .switch {
+            position: relative; display: inline-block;
+            width: 36px; height: 20px; flex-shrink: 0;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer;
+            inset: 0; background: #cbd5e1;
+            transition: .3s; border-radius: 20px;
+        }
+        .slider::before {
+            content: ''; position: absolute;
+            width: 14px; height: 14px;
+            left: 3px; bottom: 3px;
+            background: white; transition: .3s; border-radius: 50%;
+        }
+        input:checked + .slider { background: var(--green); }
+        input:checked + .slider::before { transform: translateX(16px); }
+        
+        #bmi-auto-fields { display: none; }
+        #bmi-preview-field { display: none; }
+
+        /* Buttons & Spinner */
+        .btn-submit {
+            width: 100%; margin-top: 1.5rem;
+            display: flex; align-items: center; justify-content: center; gap: .6rem;
+            background: var(--green); color: white;
+            border: none; border-radius: var(--radius);
+            padding: .9rem 1.5rem; font-size: 1rem; font-weight: 600;
+            cursor: pointer; transition: background .18s, transform .1s;
+            box-shadow: 0 4px 14px rgba(16,185,129,.35);
+        }
+        .btn-submit:hover { background: var(--green-dark); }
+        .btn-submit:disabled { background: var(--text-muted); cursor: not-allowed; transform: none; }
+        
+        .spinner {
+            width: 18px; height: 18px; border: 2.5px solid rgba(255,255,255,.3);
+            border-top-color: white; border-radius: 50%;
+            animation: spin .65s linear infinite; display: none;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── Results Section ── */
+        #results { display: none; margin-top: 2rem; width: 100%; max-width: 900px; }
+
+        .diagnosis-banner {
+            background: var(--white); border: 1px solid var(--border);
+            border-radius: var(--radius-lg); padding: 2rem;
+            margin-bottom: 1.5rem;
+            box-shadow: var(--shadow-md);
+            border-left: 6px solid var(--text-muted);
+        }
+        .diagnosis-banner.diabetic    { border-left-color: var(--red); }
+        .diagnosis-banner.non-diabetic{ border-left-color: var(--green); }
+
+        .diag-label { font-size: .75rem; text-transform: uppercase; letter-spacing: .1em; color: var(--text-muted); margin-bottom: .4rem; }
+        .diag-verdict { font-family: var(--font-display); font-size: 2rem; line-height: 1.1; }
+        .diabetic .diag-verdict     { color: var(--red); }
+        .non-diabetic .diag-verdict { color: var(--green); }
+        
+        .confidence-bars { margin-top: 1.5rem; }
+        .conf-row { display: flex; align-items: center; gap: .7rem; margin-bottom: .6rem; }
+        .conf-label { font-size: .82rem; color: var(--text-mid); width: 110px; flex-shrink: 0; }
+        .conf-track { flex: 1; height: 8px; background: var(--bg); border-radius: 99px; overflow: hidden; border: 1px solid var(--border); }
+        .conf-fill  { height: 100%; border-radius: 99px; transition: width .6s ease; }
+        .conf-fill.pos { background: var(--green); }
+        .conf-fill.neg { background: var(--red); }
+        .conf-pct { font-size: .82rem; font-weight: 600; width: 50px; text-align: right; }
+        .pct-pos { color: var(--red); }
+        .pct-neg { color: var(--green); }
+
+        /* ── XAI Tabs ── */
+        .xai-container { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-md); }
+        .tabs { display: flex; gap: .2rem; background: var(--bg); padding: .5rem; border-bottom: 1px solid var(--border); }
+        .tab {
+            padding: .5rem 1rem; border-radius: 8px; font-size: .85rem; font-weight: 500;
+            cursor: pointer; border: 1px solid transparent;
+            background: transparent; color: var(--text-muted); transition: all .2s;
+        }
+        .tab.active { background: var(--white); color: var(--green); border-color: var(--border); font-weight: 600; box-shadow: var(--shadow-sm); }
+        .tab:hover:not(.active) { color: var(--text); }
+
+        .tab-panel { display: none; padding: 1.5rem; }
+        .tab-panel.active { display: block; }
+
+        .xai-header h3 { font-size: 1.05rem; font-weight: 600; color: var(--text); margin-bottom: .25rem; }
+        .xai-header p { font-size: .85rem; color: var(--text-muted); margin-bottom: 1.5rem; }
+        
+        /* White background for XAI Plots */
+        .xai-img-wrap {
+            background-color: #ffffff; /* White container */
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+        }
+        .xai-img-wrap img { 
+            width: 100%; 
+            border-radius: var(--radius);
+        }
+
+        /* Counterfactual Styles */
+        .cf-badge {
+            display: inline-flex; align-items: center; gap: .4rem;
+            padding: .4rem .8rem; border-radius: 8px;
+            font-size: .8rem; font-weight: 600; margin-bottom: 1rem;
+        }
+        .cf-badge.found     { background: var(--green-faint); color: var(--green-dark); border: 1px solid var(--green-mid); }
+        .cf-badge.not-found { background: var(--red-faint); color: #991b1b; border: 1px solid #fca5a5; }
+
+        .cf-changes { margin-top: 1rem; }
+        .cf-change-row {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: .6rem .9rem; border-radius: 8px; margin-bottom: .45rem;
+            border: 1px solid var(--border); font-size: .85rem; gap: .5rem;
+            flex-wrap: wrap; background: var(--bg);
+        }
+        .cf-change-row .feat-name { font-weight: 600; min-width: 150px; color: var(--text-mid); }
+        .cf-arrow { color: var(--text-muted); font-size: .8rem; }
+        .cf-delta {
+            font-size: .75rem; font-weight: 600;
+            padding: .2rem .5rem; border-radius: 6px;
+        }
+        .cf-delta.up   { background: var(--red-faint); color: var(--red); }
+        .cf-delta.down { background: var(--green-faint); color: var(--green-dark); }
+
+        #error-msg {
+            display: none; background: var(--red-faint);
+            border: 1px solid #fca5a5; border-radius: var(--radius);
+            padding: .9rem 1.2rem; color: #991b1b; font-size: .88rem; margin-top: 1rem;
+        }
+
+        /* ── Footer ── */
+        footer {
+            background: var(--white); border-top: 1px solid var(--border);
+            padding: 1.5rem 2rem; margin-top: auto;
+        }
+        .footer-inner { 
+            max-width: 1200px; margin: 0 auto;
+            display: flex; justify-content: space-between; align-items: center;
+            flex-wrap: wrap; gap: 1rem;
+        }
+        .footer-logo {
+            display: inline-flex; align-items: center; gap: .4rem;
+            font-weight: 700; font-size: 1.1rem; color: var(--text);
+        }
+        .footer-logo svg { stroke: var(--green); width: 20px; height: 20px; }
+        .footer-note { font-size: .8rem; color: var(--text-muted); }
+        
+        /* Disclaimer for landing page */
+        .disclaimer-bottom {
+            background: #fffbeb; border: 1px solid #fde68a;
+            color: #92400e;
+            font-size: .8rem; padding: .6rem 1.5rem;
+            border-radius: var(--radius); 
+            margin-top: 2rem; margin-bottom: 1rem;
+            max-width: 800px; /* Bigger horizontally */
+            width: 100%; /* Ensures it can grow */
+            line-height: 1.5;
+            text-align: center;
+            margin-left: auto; margin-right: auto;
+        }
+
+        /* ── Responsive Tweaks ── */
+        @media (max-width: 768px) {
+            header { padding: 0 1rem; }
+            .logo { font-size: 1.1rem; }
+            
+            /* Mobile Nav */
+            .nav-links {
+                display: none;
+                position: absolute;
+                top: 70px; left: 0; width: 100%;
+                background: var(--white);
+                border-bottom: 1px solid var(--border);
+                flex-direction: column;
+                padding: 1rem;
+                gap: 0.5rem;
+                box-shadow: var(--shadow-md);
+            }
+            .nav-links.active { display: flex; }
+            .nav-btn { width: 100%; text-align: left; padding: .8rem; }
+            
+            .mobile-menu-btn { display: flex; }
+
+            .form-grid { grid-template-columns: 1fr; }
+            .page-header { flex-direction: column; align-items: flex-start; gap: 1rem; }
+            .hero { padding: 3rem .5rem 2rem; }
+            .hero h1 { font-size: 1.9rem; }
+            
+            .footer-inner { flex-direction: column; text-align: center; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- Animated background dots -->
+    <div class="bg-dots" aria-hidden="true"></div>
+
+    <!-- Header -->
+    <header>
+        <div class="logo" onclick="switchView('home')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+            </svg>
+            <span class="logo-rest">DiaResFormer</span>
+        </div>
+        
+        <!-- Desktop Nav -->
+        <nav class="nav-links" id="navLinks">
+            <button id="nav-home" class="nav-btn active" onclick="switchView('home')">Home</button>
+            <button id="nav-features" class="nav-btn" onclick="switchView('features')">Features</button>
+            <button id="nav-app" class="nav-btn" onclick="switchView('app')">Prediction Tool</button>
+        </nav>
+
+        <!-- Mobile Menu Button -->
+        <button class="mobile-menu-btn" onclick="toggleMobileMenu()" aria-label="Menu">
+            <span></span><span></span><span></span>
+        </button>
+    </header>
+
+    <main>
+        <!-- ═══════════════════════════════════════════
+             VIEW 1: LANDING PAGE
+        ════════════════════════════════════════════ -->
+        <section id="view-home" class="view-section active">
+            <div class="hero">
+                <h1>Diabetes Detection in Women<br>
+                    <em>with DiaResFormer</em>
+                </h1>
+                <p class="hero-sub">
+                    A hybrid deep learning explainable framework to assess diabetes risk in women from clinical data. 
+                    Every prediction comes with a full explainability report.
+                </p>
+
+                <div style="margin-bottom: 2.5rem;">
+                    <button class="btn-primary" onclick="switchView('app')">
+                        Start Assessment
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Added "Key Features" Text -->
+            <h2 class="section-label">Key Features</h2>
+
+            <div class="features-grid">
+                <!-- Container 1: Deep Learning Hybrid Model -->
+                <div class="feature-card">
+                    <div class="card-header">
+                        <!-- Neural Network Icon -->
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="5" y1="6" x2="12" y2="6"/><line x1="5" y1="6" x2="12" y2="12"/>
+                            <line x1="5" y1="12" x2="12" y2="6"/><line x1="5" y1="12" x2="12" y2="12"/>
+                            <line x1="5" y1="12" x2="12" y2="18"/><line x1="5" y1="18" x2="12" y2="12"/>
+                            <line x1="5" y1="18" x2="12" y2="18"/>
+                            <line x1="12" y1="6" x2="19" y2="6"/><line x1="12" y1="6" x2="19" y2="12"/>
+                            <line x1="12" y1="12" x2="19" y2="6"/><line x1="12" y1="12" x2="19" y2="12"/>
+                            <line x1="12" y1="12" x2="19" y2="18"/><line x1="12" y1="18" x2="19" y2="12"/>
+                            <line x1="12" y1="18" x2="19" y2="18"/>
+                            <circle cx="5" cy="6" r="1.5" fill="currentColor"/><circle cx="5" cy="12" r="1.5" fill="currentColor"/>
+                            <circle cx="5" cy="18" r="1.5" fill="currentColor"/><circle cx="12" cy="6" r="1.5" fill="currentColor"/>
+                            <circle cx="12" cy="12" r="1.5" fill="currentColor"/><circle cx="12" cy="18" r="1.5" fill="currentColor"/>
+                            <circle cx="19" cy="6" r="1.5" fill="currentColor"/><circle cx="19" cy="12" r="1.5" fill="currentColor"/>
+                            <circle cx="19" cy="18" r="1.5" fill="currentColor"/>
+                        </svg>
+                        <h3>Deep Learning Hybrid Model</h3>
+                    </div>
+                    <p>A hybrid model combining TabResNet and FT-Transformer. Trained on three diverse datasets:</p>
+                    <ul class="card-list">
+                        <li>National Institute of Diabetes (NIDDK)</li>
+                        <li>Hospital Frankfurt, Germany</li>
+                        <li>Pabna Diabetes Hospital, Bangladesh</li>
+                    </ul>
+                </div>
+
+                <!-- Container 2: XAI Integration -->
+                <div class="feature-card">
+                    <div class="card-header">
+                        <!-- Chart Icon -->
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+                        </svg>
+                        <h3>XAI Integration</h3>
+                    </div>
+                    <p>Every prediction is accompanied by four complementary explainability methods:</p>
+                    <ul class="card-list">
+                        <li>Counterfactual Explanations</li>
+                        <li>Permutation Feature Importance (PFI)</li>
+                        <li>ALE (Accumulated Local Effects)</li>
+                        <li>Attention Rollout</li>
+                    </ul>
+                </div>
+
+                <!-- Container 3: Confidence Scoring -->
+                <div class="feature-card">
+                    <div class="card-header">
+                        <!-- Shield Icon -->
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/>
+                        </svg>
+                        <h3>Confidence Scoring</h3>
+                    </div>
+                    <p>Each prediction returns a calibrated probability score alongside the binary outcome — giving you a clear sense of how confident the model is.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══════════════════════════════════════════
+             VIEW 2: PREDICTION TOOL
+        ════════════════════════════════════════════ -->
+        <section id="view-app" class="view-section">
+            <div class="app-container">
+                
+                <!-- Page Header -->
+                <div class="page-header">
+                    <h2>Patient Assessment</h2>
+                    <button class="back-btn" onclick="switchView('home')">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                        Back to Home
+                    </button>
+                </div>
+
+                <!-- Added Light Horizontal Line -->
+                <hr class="section-divider">
+
+                <!-- Prediction page instruction + disclaimer -->
+                <div class="instruction-box">
+                    <p><strong>Instructions:</strong> Please provide information about your headache symptoms. All fields are required for accurate prediction.</p>
+                    <p class="instr-disclaimer">⚠️ <strong>Disclaimer:</strong> This tool is for assistance purposes only and should not replace professional medical advice.</p>
+                </div>
+
+                <div class="form-card">
+                    <form onsubmit="event.preventDefault(); runDiagnosis();">
+                        <div class="form-grid">
+                            <!-- Pregnancies -->
+                            <div class="field">
+                                <label>Pregnancies</label>
+                                <input type="number" id="pregnancies" class="input-field" min="0" max="20" placeholder="e.g. 2" />
+                                <span class="helper-text">Number of times pregnant</span>
+                            </div>
+                            <!-- Glucose -->
+                            <div class="field">
+                                <label>Glucose</label>
+                                <input type="number" id="glucose" class="input-field" min="0" max="300" placeholder="e.g. 120" />
+                                <span class="helper-text">Blood Glucose Level 2 hours OGTT (mg/dL)</span>
+                            </div>
+                            <!-- Blood Pressure -->
+                            <div class="field">
+                                <label>Blood Pressure</label>
+                                <input type="number" id="blood_pressure" class="input-field" min="0" max="200" placeholder="e.g. 80" />
+                                <span class="helper-text">Diastolic (mmHg)</span>
+                            </div>
+                            <!-- Skin Thickness -->
+                            <div class="field">
+                                <label>Skin Thickness</label>
+                                <input type="number" id="skin_thickness" class="input-field" min="0" max="100" placeholder="e.g. 20" />
+                                <span class="helper-text">Triceps Skinfold Thickness (mm)</span>
+                            </div>
+                            <!-- Insulin -->
+                            <div class="field">
+                                <label>Insulin</label>
+                                <input type="number" id="insulin" class="input-field" min="0" max="900" placeholder="e.g. 80" />
+                                <span class="helper-text">Serum Insulin Levels (μU/mL)</span>
+                            </div>
+                            <!-- Age -->
+                            <div class="field">
+                                <label>Age</label>
+                                <input type="number" id="age" class="input-field" min="1" max="120" placeholder="e.g. 35" />
+                                <span class="helper-text">Age of the participant (years)</span>
+                            </div>
+                            <!-- Diabetes Pedigree -->
+                            <div class="field">
+                                <label>Diabetes Pedigree Function</label>
+                                <input type="number" id="dpf" class="input-field" min="0" max="3" step="0.001" placeholder="e.g. 0.500" />
+                                <span class="helper-text">Genetic diabetes susceptibility (score)</span>
+                            </div>
+                            <!-- BMI -->
+                            <div class="field">
+                                <label>BMI</label>
+                                
+                                <label class="bmi-toggle">
+                                    <div class="switch">
+                                        <input type="checkbox" id="bmi-toggle-cb" onchange="toggleBMI()" />
+                                        <span class="slider"></span>
+                                    </div>
+                                    <span class="toggle-label">Calculate from height &amp; weight</span>
+                                </label>
+
+                                <div id="bmi-direct-field">
+                                    <input type="number" id="bmi" class="input-field" min="10" max="70" step="0.1" placeholder="e.g. 25.5" />
+                                </div>
+
+                                <div id="bmi-auto-fields">
+                                    <div style="display: flex; gap: .5rem; margin-bottom: .5rem;">
+                                        <input type="number" id="weight_kg" class="input-field" min="20" max="300" step="0.1" placeholder="Weight (kg)" oninput="calcBMI()" />
+                                        <input type="number" id="height_cm" class="input-field" min="50" max="250" step="0.5" placeholder="Height (cm)" oninput="calcBMI()" />
+                                    </div>
+                                    <div id="bmi-preview-field" class="field" style="display:none;">
+                                        <label>Calculated BMI</label>
+                                        <input type="text" id="bmi-preview" class="input-field" readonly style="opacity:.7; background: var(--bg);" />
+                                    </div>
+                                </div>
+                                <span class="helper-text">Body Mass Index (kg/m²)</span>
+                            </div>
+                        </div>
+
+                        <div id="error-msg"></div>
+
+                        <button type="submit" class="btn-submit" id="run-btn">
+                            <div class="spinner" id="spinner"></div>
+                            <span id="btn-text">Analyse &amp; Predict</span>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Results -->
+                <div id="results">
+                    <!-- Diagnosis Banner -->
+                    <div class="diagnosis-banner" id="diag-banner">
+                        <div>
+                            <div class="diag-label">Prediction Result</div>
+                            <div class="diag-verdict" id="diag-verdict">—</div>
+                            <div style="font-size:.85rem;color:var(--text-muted);margin-top:.4rem;" id="diag-sub"></div>
+                        </div>
+                        <div class="confidence-bars">
+                            <div class="conf-row">
+                                <span class="conf-label">Non-Diabetic</span>
+                                <div class="conf-track"><div class="conf-fill pos" id="bar-neg" style="width:0%"></div></div>
+                                <span class="conf-pct neg" id="pct-neg">0%</span>
+                            </div>
+                            <div class="conf-row">
+                                <span class="conf-label">Diabetic</span>
+                                <div class="conf-track"><div class="conf-fill neg" id="bar-pos" style="width:0%"></div></div>
+                                <span class="conf-pct pos" id="pct-pos">0%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- XAI section -->
+                    <div class="xai-container">
+                        <div class="tabs">
+                            <button class="tab active" onclick="switchTab('pfi', this)">Permutation Importance</button>
+                            <button class="tab" onclick="switchTab('ale', this)">ALE Plots</button>
+                            <button class="tab" onclick="switchTab('attention', this)">Attention Rollout</button>
+                            <button class="tab" onclick="switchTab('cf', this)">Counterfactual</button>
+                        </div>
+
+                        <!-- PFI -->
+                        <div class="tab-panel active" id="panel-pfi">
+                            <div class="xai-header">
+                                <h3>Permutation Feature Importance</h3>
+                                <p id="pfi-summary">Global measure: how much model accuracy drops when each feature is randomly shuffled.</p>
+                            </div>
+                            <div class="xai-img-wrap"><img id="pfi-img" src="" alt="PFI chart" /></div>
+                        </div>
+
+                        <!-- ALE -->
+                        <div class="tab-panel" id="panel-ale">
+                            <div class="xai-header">
+                                <h3>Accumulated Local Effects</h3>
+                                <p id="ale-summary">Shows how each feature influences the predicted diabetes probability. Your value is marked with a dotted line.</p>
+                            </div>
+                            <div class="xai-img-wrap"><img id="ale-img" src="" alt="ALE chart" /></div>
+                        </div>
+
+                        <!-- Attention Rollout -->
+                        <div class="tab-panel" id="panel-attention">
+                            <div class="xai-header">
+                                <h3>Attention Rollout</h3>
+                                <p id="attn-summary">How the Transformer's attention propagates across all layers — showing which features the model focused on for your specific input.</p>
+                            </div>
+                            <div class="xai-img-wrap"><img id="attn-img" src="" alt="Attention Rollout chart" /></div>
+                        </div>
+
+                        <!-- Counterfactual -->
+                        <div class="tab-panel" id="panel-cf">
+                            <div class="xai-header">
+                                <h3>Counterfactual Explanation</h3>
+                                <p id="cf-summary">What minimal changes to your values would flip the prediction?</p>
+                            </div>
+                            <div class="xai-body">
+                                <div id="cf-badge-area"></div>
+                                <div class="xai-img-wrap"><img id="cf-img" src="" alt="Counterfactual chart" style="margin-bottom:1rem;" /></div>
+                                <div class="cf-changes" id="cf-changes-list"></div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+        </section>
+        
+        <!-- Landing Page Disclaimer -->
+        <div id="landing-disclaimer" class="disclaimer-bottom" style="display:none;">
+            ⚠️ <strong>Disclaimer:</strong> This tool is for assistance purposes only and should not replace professional medical advice.
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-inner">
+            <div class="footer-logo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                <span class="logo-rest">DiaResFormer</span>
+            </div>
+            <p class="footer-note">&copy; <span id="currentYear"></span> DiaResFormer. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        // ── Footer Year Update ────────────────────────────────────────────────────
+        document.getElementById('currentYear').textContent = new Date().getFullYear();
+
+        // ── Mobile Menu Toggle ───────────────────────────────────────────────────
+        function toggleMobileMenu() {
+            const nav = document.getElementById('navLinks');
+            nav.classList.toggle('active');
+        }
+
+        // ── View Switching Logic ───────────────────────────────────────────────────
+        function switchView(viewName) {
+            // Hide all sections
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            // Remove active from nav
+            document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+            
+            // Handle specific logic for Features button
+            if (viewName === 'features') {
+                // Ensure home is active
+                document.getElementById('view-home').classList.add('active');
+                document.getElementById('nav-home').classList.add('active');
+                // Scroll to features
+                document.querySelector('.features-grid').scrollIntoView({ behavior: 'smooth' });
+            } else {
+                document.getElementById(`view-${viewName}`).classList.add('active');
+                const navBtn = document.getElementById(`nav-${viewName}`);
+                if(navBtn) navBtn.classList.add('active');
+                window.scrollTo(0, 0);
+            }
+
+            // Toggle landing page disclaimer visibility
+            const landingDisclaimer = document.getElementById('landing-disclaimer');
+            if(landingDisclaimer) {
+                landingDisclaimer.style.display = (viewName === 'home' || viewName === 'features') ? 'block' : 'none';
+            }
+        }
+        // Initialize disclaimer visibility
+        document.getElementById('landing-disclaimer').style.display = 'block';
+
+        // ── BMI Toggle Logic ──────────────────────────────────────────────────────
+        function toggleBMI() {
+            const cb = document.getElementById('bmi-toggle-cb').checked;
+            document.getElementById('bmi-direct-field').style.display = cb ? 'none' : 'block';
+            document.getElementById('bmi-auto-fields').style.display  = cb ? 'block' : 'none';
+        }
+
+        function calcBMI() {
+            const w = parseFloat(document.getElementById('weight_kg').value);
+            const h = parseFloat(document.getElementById('height_cm').value);
+            const pf = document.getElementById('bmi-preview-field');
+            const pi = document.getElementById('bmi-preview');
+            if (w > 0 && h > 0) {
+                const bmi = (w / ((h / 100) ** 2)).toFixed(1);
+                pi.value = `${bmi} kg/m²`;
+                pf.style.display = 'block';
+            } else {
+                pf.style.display = 'none';
+            }
+        }
+
+        // ── Tab Switcher Logic ────────────────────────────────────────────────────
+        function switchTab(name, btn) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('panel-' + name).classList.add('active');
+        }
+
+        // ── Main Diagnosis Call ─────────────────────────────────────────────────────
+        async function runDiagnosis() {
+            const errorDiv = document.getElementById('error-msg');
+            errorDiv.style.display = 'none';
+
+            // Collect values
+            const useBMI = !document.getElementById('bmi-toggle-cb').checked;
+            const payload = {
+                pregnancies   : document.getElementById('pregnancies').value,
+                glucose       : document.getElementById('glucose').value,
+                blood_pressure: document.getElementById('blood_pressure').value,
+                skin_thickness: document.getElementById('skin_thickness').value,
+                insulin       : document.getElementById('insulin').value,
+                dpf           : document.getElementById('dpf').value,
+                age           : document.getElementById('age').value,
+            };
+            if (useBMI) {
+                payload.bmi = document.getElementById('bmi').value;
+            } else {
+                payload.weight_kg  = document.getElementById('weight_kg').value;
+                payload.height_cm  = document.getElementById('height_cm').value;
+                payload.bmi        = '';
+            }
+
+            // Basic validation
+            const required = ['pregnancies','glucose','blood_pressure','skin_thickness','insulin','dpf','age'];
+            for (const k of required) {
+                if (!payload[k]) {
+                    showError(`Please fill in: ${k.replace(/_/g,' ')}`);
+                    return;
+                }
+            }
+            if (useBMI && !payload.bmi) { showError("Please enter your BMI."); return; }
+            if (!useBMI && (!payload.weight_kg || !payload.height_cm)) {
+                showError("Please enter both weight and height."); return;
+            }
+
+            // Loading state
+            setLoading(true);
+
+            try {
+                const resp = await fetch('/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                const data = await resp.json();
+
+                if (data.error) { showError(data.error); setLoading(false); return; }
+
+                renderResults(data);
+            } catch (e) {
+                showError('Network error: ' + e.message);
+            }
+            setLoading(false);
+        }
+
+        function renderResults(data) {
+            const isDiabetic = data.pred_index === 1;
+            const banner = document.getElementById('diag-banner');
+            banner.className = 'diagnosis-banner ' + (isDiabetic ? 'diabetic' : 'non-diabetic');
+
+            document.getElementById('diag-verdict').textContent = data.prediction;
+            document.getElementById('diag-sub').textContent =
+                isDiabetic
+                ? `High diabetes risk detected (BMI used: ${data.bmi_calculated})`
+                : `Low diabetes risk (BMI used: ${data.bmi_calculated})`;
+
+            // Confidence bars
+            document.getElementById('bar-neg').style.width = data.confidence.non_diabetic + '%';
+            document.getElementById('bar-pos').style.width = data.confidence.diabetic + '%';
+            document.getElementById('pct-neg').textContent = data.confidence.non_diabetic.toFixed(1) + '%';
+            document.getElementById('pct-pos').textContent = data.confidence.diabetic.toFixed(1) + '%';
+
+            const xai = data.xai;
+
+            // PFI
+            document.getElementById('pfi-img').src = xai.pfi.img;
+            document.getElementById('pfi-summary').textContent = xai.pfi.summary;
+
+            // ALE
+            document.getElementById('ale-img').src = xai.ale.img;
+            document.getElementById('ale-summary').textContent = xai.ale.summary;
+
+            // Attention
+            document.getElementById('attn-img').src = xai.attention_rollout.img;
+            document.getElementById('attn-summary').textContent = xai.attention_rollout.summary;
+
+            // Counterfactual
+            const cf = xai.counterfactual;
+            const badgeEl = document.getElementById('cf-badge-area');
+            badgeEl.innerHTML = cf.found
+                ? `<div class="cf-badge found">✓ Counterfactual found — target: ${cf.title.replace('Counterfactual Explanation','')}</div>`
+                : `<div class="cf-badge not-found">⚠ No counterfactual found within search budget</div>`;
+
+            document.getElementById('cf-summary').textContent = cf.summary;
+
+            if (cf.img) document.getElementById('cf-img').src = cf.img;
+            else document.getElementById('cf-img').style.display = 'none';
+
+            const cfList = document.getElementById('cf-changes-list');
+            cfList.innerHTML = cf.changes.length > 0
+                ? '<div style="font-size:.85rem;color:var(--text-muted);margin-bottom:.6rem;">Suggested changes to reverse outcome:</div>'
+                    + cf.changes.map(c => {
+                        const up = c.delta > 0;
+                        return `<div class="cf-change-row">
+                            <span class="feat-name">${c.feature}</span>
+                            <span class="arrow">
+                                ${c.original} <span style="color:var(--text-muted)">→</span> ${c.counterfactual}
+                            </span>
+                            <span class="cf-delta ${up ? 'up' : 'down'}">${up ? '↑' : '↓'} ${Math.abs(c.delta).toFixed(2)}</span>
+                        </div>`;
+                    }).join('')
+                : '<p style="color:var(--text-muted);font-size:.85rem;">No feature changes required — prediction may already be near boundary.</p>';
+
+            document.getElementById('results').style.display = 'block';
+            document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function setLoading(on) {
+            document.getElementById('run-btn').disabled = on;
+            document.getElementById('spinner').style.display = on ? 'block' : 'none';
+            document.getElementById('btn-text').textContent = on ? 'Analysing…' : 'Analyse &amp; Predict';
+        }
+
+        function showError(msg) {
+            const el = document.getElementById('error-msg');
+            el.textContent = '⚠ ' + msg;
+            el.style.display = 'block';
+        }
+    </script>
+</body>
+</html>
