@@ -190,12 +190,11 @@
             gap: 0.75rem;
             margin-bottom: 0.75rem;
         }
-        /* Make sure icons are green */
         .card-header svg {
             width: 28px; height: 28px;
             flex-shrink: 0;
-            stroke: var(--green); /* Ensures stroke is green */
-            fill: var(--green); /* Ensures fills are green */
+            stroke: var(--green);
+            fill: var(--green);
         }
         .feature-card h3 { 
             font-size: 1.05rem; 
@@ -231,7 +230,7 @@
         /* Page Header */
         .page-header {
             width: 100%;
-            max-width: 900px; /* Wider to match form */
+            max-width: 900px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -288,7 +287,7 @@
             padding: 3rem 2.5rem; 
             box-shadow: var(--shadow-md);
             width: 100%;
-            max-width: 900px; /* Made wider */
+            max-width: 900px;
         }
         .form-grid {
             display: grid;
@@ -401,14 +400,65 @@
 
         /* ── XAI Tabs ── */
         .xai-container { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-md); }
-        .tabs { display: flex; gap: .2rem; background: var(--bg); padding: .5rem; border-bottom: 1px solid var(--border); }
+        
+        /* Tab Wrapper & Arrows */
+        .tabs-wrapper {
+            display: flex;
+            align-items: center;
+            background: var(--bg);
+            padding: .5rem;
+            border-bottom: 1px solid var(--border);
+            position: relative;
+        }
+        .tabs { 
+            display: flex; 
+            gap: .2rem; 
+            background: transparent; 
+            flex-wrap: nowrap; 
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch; /* Smooth swipe on iOS */
+            scrollbar-width: none; /* Hide scrollbar Firefox */
+            scroll-behavior: smooth;
+        }
+        .tabs::-webkit-scrollbar {
+            display: none; /* Hide scrollbar Chrome/Safari */
+        }
         .tab {
             padding: .5rem 1rem; border-radius: 8px; font-size: .85rem; font-weight: 500;
             cursor: pointer; border: 1px solid transparent;
             background: transparent; color: var(--text-muted); transition: all .2s;
+            white-space: nowrap; /* Prevent text wrapping */
+            flex-shrink: 0; /* Prevent tabs from squishing */
         }
         .tab.active { background: var(--white); color: var(--green); border-color: var(--border); font-weight: 600; box-shadow: var(--shadow-sm); }
         .tab:hover:not(.active) { color: var(--text); }
+
+        .tab-arrow {
+            display: none; /* Hidden on desktop */
+            background: var(--white);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            min-width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            z-index: 2;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.2s;
+        }
+        .tab-arrow:hover {
+            color: var(--green);
+            border-color: var(--green);
+        }
+        .tab-arrow svg {
+            width: 16px;
+            height: 16px;
+        }
+        .tab-arrow.left { margin-right: .3rem; }
+        .tab-arrow.right { margin-left: .3rem; }
 
         .tab-panel { display: none; padding: 1.5rem; }
         .tab-panel.active { display: block; }
@@ -418,7 +468,7 @@
         
         /* White background for XAI Plots */
         .xai-img-wrap {
-            background-color: #ffffff; /* White container */
+            background-color: #ffffff;
             border-radius: var(--radius);
             border: 1px solid var(--border);
         }
@@ -482,8 +532,8 @@
             font-size: .8rem; padding: .6rem 1.5rem;
             border-radius: var(--radius); 
             margin-top: 2rem; margin-bottom: 1rem;
-            max-width: 800px; /* Bigger horizontally */
-            width: 100%; /* Ensures it can grow */
+            max-width: 800px;
+            width: 100%;
             line-height: 1.5;
             text-align: center;
             margin-left: auto; margin-right: auto;
@@ -510,6 +560,9 @@
             .nav-btn { width: 100%; text-align: left; padding: .8rem; }
             
             .mobile-menu-btn { display: flex; }
+
+            /* Show tab arrows on mobile */
+            .tab-arrow { display: flex; }
 
             .form-grid { grid-template-columns: 1fr; }
             .page-header { flex-direction: column; align-items: flex-start; gap: 1rem; }
@@ -630,7 +683,7 @@
                         </svg>
                         <h3>Confidence Scoring</h3>
                     </div>
-                    <p>Each prediction returns a calibrated probability score alongside the binary outcome — giving you a clear sense of how confident the model is.</p>
+                    <p>Each prediction returns a calibrated probability score alongside the binary outcome, providing a clear indication of the model’s confidence in its prediction.</p>
                 </div>
             </div>
         </section>
@@ -655,7 +708,7 @@
 
                 <!-- Prediction page instruction + disclaimer -->
                 <div class="instruction-box">
-                    <p><strong>Instructions:</strong> Please provide information about your headache symptoms. All fields are required for accurate prediction.</p>
+                    <p><strong>Instructions:</strong> Please provide the required health indicators for diabetes risk assessment. All fields are required for accurate prediction.</p>
                     <p class="instr-disclaimer">⚠️ <strong>Disclaimer:</strong> This tool is for assistance purposes only and should not replace professional medical advice.</p>
                 </div>
 
@@ -713,7 +766,7 @@
                                         <input type="checkbox" id="bmi-toggle-cb" onchange="toggleBMI()" />
                                         <span class="slider"></span>
                                     </div>
-                                    <span class="toggle-label">Calculate from height &amp; weight</span>
+                                    <span class="toggle-label">Calculate from height and weight</span>
                                 </label>
 
                                 <div id="bmi-direct-field">
@@ -738,7 +791,7 @@
 
                         <button type="submit" class="btn-submit" id="run-btn">
                             <div class="spinner" id="spinner"></div>
-                            <span id="btn-text">Analyse &amp; Predict</span>
+                            <span id="btn-text">Analyse and Predict</span>
                         </button>
                     </form>
                 </div>
@@ -768,11 +821,20 @@
 
                     <!-- XAI section -->
                     <div class="xai-container">
-                        <div class="tabs">
-                            <button class="tab active" onclick="switchTab('pfi', this)">Permutation Importance</button>
-                            <button class="tab" onclick="switchTab('ale', this)">ALE Plots</button>
-                            <button class="tab" onclick="switchTab('attention', this)">Attention Rollout</button>
-                            <button class="tab" onclick="switchTab('cf', this)">Counterfactual</button>
+                        <!-- Tabs Wrapper with Arrows -->
+                        <div class="tabs-wrapper">
+                            <button class="tab-arrow left" onclick="scrollTabs(-1)" aria-label="Scroll tabs left">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                            </button>
+                            <div class="tabs" id="xaiTabs">
+                                <button class="tab active" onclick="switchTab('pfi', this)">Permutation Importance</button>
+                                <button class="tab" onclick="switchTab('ale', this)">ALE Plots</button>
+                                <button class="tab" onclick="switchTab('attention', this)">Attention Rollout</button>
+                                <button class="tab" onclick="switchTab('cf', this)">Counterfactual</button>
+                            </div>
+                            <button class="tab-arrow right" onclick="scrollTabs(1)" aria-label="Scroll tabs right">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+                            </button>
                         </div>
 
                         <!-- PFI -->
@@ -899,12 +961,24 @@
             }
         }
 
-        // ── Tab Switcher Logic ────────────────────────────────────────────────────
+        // ── Tab Switcher & Scroll Logic ────────────────────────────────────────────
         function switchTab(name, btn) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
             btn.classList.add('active');
             document.getElementById('panel-' + name).classList.add('active');
+            
+            // Ensure the clicked tab is scrolled into view on mobile
+            btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }
+
+        function scrollTabs(direction) {
+            const tabsContainer = document.getElementById('xaiTabs');
+            const scrollAmount = 150; // Adjust scroll distance
+            tabsContainer.scrollBy({
+                left: direction * scrollAmount,
+                behavior: 'smooth'
+            });
         }
 
         // ── Main Diagnosis Call ─────────────────────────────────────────────────────
@@ -1029,7 +1103,8 @@
         function setLoading(on) {
             document.getElementById('run-btn').disabled = on;
             document.getElementById('spinner').style.display = on ? 'block' : 'none';
-            document.getElementById('btn-text').textContent = on ? 'Analysing…' : 'Analyse &amp; Predict';
+            // FINAL FIX: Changed & to 'and' to permanently avoid HTML entity rendering bugs
+            document.getElementById('btn-text').textContent = on ? 'Analysing…' : 'Analyse and Predict';
         }
 
         function showError(msg) {
